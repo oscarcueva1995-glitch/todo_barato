@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
         Handler(Looper.getMainLooper()).postDelayed({
             layoutIntro.visibility = View.GONE
             layoutContenido.visibility = View.VISIBLE
-        }, 5000) // Cambiado a 3 segundos para que se aprecie la animación
+        }, 6000)
 
         // 2. Insertar registros iniciales en la base de datos SQLite
         val admin = AdminSQLiteOpenHelper(this)
@@ -95,27 +95,42 @@ class MainActivity : AppCompatActivity() {
         // 4. Cargar los 5 registros en la lista principal desde el inicio
         listaFiltrada.addAll(listaVentas)
 
-        // 5. Configurar el adaptador para mostrar las tarjetas con colores condicionales
+        // 5. Configurar el adaptador con letras más grandes
         val adapter = object : ArrayAdapter<Venta>(this, R.layout.item_venta, listaFiltrada) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = convertView ?: layoutInflater.inflate(R.layout.item_venta, parent, false)
                 val item = getItem(position)!!
 
-                view.findViewById<TextView>(R.id.txtItemCodFecha).text = "${item.codigo} • ${item.fechaVenta}"
+                // Código y fecha (Aumentado a 15sp)
+                val txtCodFecha = view.findViewById<TextView>(R.id.txtItemCodFecha)
+                txtCodFecha.text = "${item.codigo} • ${item.fechaVenta}"
+                txtCodFecha.textSize = 15f
 
+                // Tipo FACTURA / BOLETA (Aumentado a 15sp)
                 val txtTipo = view.findViewById<TextView>(R.id.txtItemTipo)
                 txtTipo.text = item.tipo.uppercase()
+                txtTipo.textSize = 15f
 
-                // Asignar color rojo para FACTURA y verde para BOLETA
                 if (item.tipo.equals("factura", ignoreCase = true)) {
                     txtTipo.setTextColor(Color.parseColor("#FF5252")) // Rojo
                 } else {
                     txtTipo.setTextColor(Color.parseColor("#4CAF50")) // Verde
                 }
 
-                view.findViewById<TextView>(R.id.txtItemNombre).text = item.nombre
-                view.findViewById<TextView>(R.id.txtItemCantidad).text = "${item.cantidad} unidad(es)"
-                view.findViewById<TextView>(R.id.txtItemPrecio).text = "S/ ${item.precio}"
+                // Nombre del producto (Aumentado a 20sp para resaltar)
+                val txtNombre = view.findViewById<TextView>(R.id.txtItemNombre)
+                txtNombre.text = item.nombre
+                txtNombre.textSize = 20f
+
+                // Cantidad (Aumentado a 16sp)
+                val txtCantidad = view.findViewById<TextView>(R.id.txtItemCantidad)
+                txtCantidad.text = "${item.cantidad} unidad(es)"
+                txtCantidad.textSize = 16f
+
+                // Precio (Aumentado a 18sp)
+                val txtPrecio = view.findViewById<TextView>(R.id.txtItemPrecio)
+                txtPrecio.text = "S/ ${item.precio}"
+                txtPrecio.textSize = 18f
 
                 return view
             }
