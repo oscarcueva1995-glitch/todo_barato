@@ -1,6 +1,7 @@
 package com.example.todo_barato
 
 import android.content.ContentValues
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -11,10 +12,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,16 +30,23 @@ class MainActivity : AppCompatActivity() {
 
         val layoutIntro = findViewById<LinearLayout>(R.id.layoutIntro)
         val layoutContenido = findViewById<LinearLayout>(R.id.layoutContenido)
+        val imgGokuIntro = findViewById<ImageView>(R.id.imgGokuIntro)
         val etBuscar = findViewById<EditText>(R.id.etBuscar)
         val txtFacturaBox = findViewById<TextView>(R.id.txtFacturaBox)
         val txtBoletaBox = findViewById<TextView>(R.id.txtBoletaBox)
         val lvVentas = findViewById<ListView>(R.id.lvVentas)
 
-        // 1. Mostrar pantalla de carga brevemente
+        // Cargar y animar el GIF de Goku en la pantalla de carga
+        Glide.with(this)
+            .asGif()
+            .load(R.drawable.goku_ui)
+            .into(imgGokuIntro)
+
+        // 1. Mostrar pantalla de carga (Splash) con animación de Goku
         Handler(Looper.getMainLooper()).postDelayed({
             layoutIntro.visibility = View.GONE
             layoutContenido.visibility = View.VISIBLE
-        }, 1500)
+        }, 5000) // Cambiado a 3 segundos para que se aprecie la animación
 
         // 2. Insertar registros iniciales en la base de datos SQLite
         val admin = AdminSQLiteOpenHelper(this)
@@ -85,14 +95,24 @@ class MainActivity : AppCompatActivity() {
         // 4. Cargar los 5 registros en la lista principal desde el inicio
         listaFiltrada.addAll(listaVentas)
 
-        // 5. Configurar el adaptador para mostrar las tarjetas directamente
+        // 5. Configurar el adaptador para mostrar las tarjetas con colores condicionales
         val adapter = object : ArrayAdapter<Venta>(this, R.layout.item_venta, listaFiltrada) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = convertView ?: layoutInflater.inflate(R.layout.item_venta, parent, false)
                 val item = getItem(position)!!
 
                 view.findViewById<TextView>(R.id.txtItemCodFecha).text = "${item.codigo} • ${item.fechaVenta}"
-                view.findViewById<TextView>(R.id.txtItemTipo).text = item.tipo.uppercase()
+
+                val txtTipo = view.findViewById<TextView>(R.id.txtItemTipo)
+                txtTipo.text = item.tipo.uppercase()
+
+                // Asignar color rojo para FACTURA y verde para BOLETA
+                if (item.tipo.equals("factura", ignoreCase = true)) {
+                    txtTipo.setTextColor(Color.parseColor("#FF5252")) // Rojo
+                } else {
+                    txtTipo.setTextColor(Color.parseColor("#4CAF50")) // Verde
+                }
+
                 view.findViewById<TextView>(R.id.txtItemNombre).text = item.nombre
                 view.findViewById<TextView>(R.id.txtItemCantidad).text = "${item.cantidad} unidad(es)"
                 view.findViewById<TextView>(R.id.txtItemPrecio).text = "S/ ${item.precio}"
