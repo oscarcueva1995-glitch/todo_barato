@@ -74,11 +74,21 @@
             android:id="@+id/txtBoletaBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
             android:background="@drawable/borde_boleta"
             android:padding="16dp"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:visibility="gone" />
+
+        <!-- Lista para mostrar todas las tarjetas de ventas -->
+        <ListView
+            android:id="@+id/lvVentas"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:divider="@null"
+            android:dividerHeight="10dp"/>
 
     </LinearLayout>
 

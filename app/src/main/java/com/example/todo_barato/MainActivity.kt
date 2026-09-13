@@ -1,88 +1,154 @@
 package com.example.todo_barato
 
-import android.graphics.drawable.AnimatedImageDrawable
-import android.os.Build
+import android.content.ContentValues
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
 import android.view.View
-import android.view.inputmethod.EditorInfo
+import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ListView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var layoutIntro: View
-    private lateinit var layoutContenido: View
-    private lateinit var imgGokuIntro: ImageView
-    private lateinit var etBuscar: EditText
-    private lateinit var txtFacturaBox: TextView
-    private lateinit var txtBoletaBox: TextView
+    private val listaVentas = ArrayList<Venta>()
+    private val listaFiltrada = ArrayList<Venta>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Inicializar Vistas
-        layoutIntro = findViewById(R.id.layoutIntro)
-        layoutContenido = findViewById(R.id.layoutContenido)
-        imgGokuIntro = findViewById(R.id.imgGokuIntro)
-        etBuscar = findViewById(R.id.etBuscar)
-        txtFacturaBox = findViewById(R.id.txtFacturaBox)
-        txtBoletaBox = findViewById(R.id.txtBoletaBox)
+        val layoutIntro = findViewById<LinearLayout>(R.id.layoutIntro)
+        val layoutContenido = findViewById<LinearLayout>(R.id.layoutContenido)
+        val etBuscar = findViewById<EditText>(R.id.etBuscar)
+        val txtFacturaBox = findViewById<TextView>(R.id.txtFacturaBox)
+        val txtBoletaBox = findViewById<TextView>(R.id.txtBoletaBox)
+        val lvVentas = findViewById<ListView>(R.id.lvVentas)
 
-        // Configurar e iniciar la animación de Goku
-        imgGokuIntro.setImageResource(R.drawable.goku_ui)
-        imgGokuIntro.post {
-            val drawable = imgGokuIntro.drawable
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && drawable is AnimatedImageDrawable) {
-                drawable.start()
-            }
-        }
-
-        // Mostrar intro por 3 segundos, luego el contenido
+        // 1. Mostrar pantalla de carga brevemente
         Handler(Looper.getMainLooper()).postDelayed({
             layoutIntro.visibility = View.GONE
             layoutContenido.visibility = View.VISIBLE
-        }, 3000)
+        }, 1500)
 
-        // Base de datos local de prueba
-        val listaVentas = listOf(
-            "Cod: xyz001\nProd: laptop gamer php\nPrecio: S/3000 | Cant: 1\nTipo: factura",
-            "Cod: xyz002\nProd: teclado\nPrecio: S/50 | Cant: 1\nTipo: boleta",
-            "Cod: xyz003\nProd: mouse inalambrico\nPrecio: S/35 | Cant: 2\nTipo: boleta",
-            "Cod: xyz004\nProd: luces led\nPrecio: S/150 | Cant: 1\nTipo: factura",
-            "Cod: xyz005\nProd: audifonos gamer\nPrecio: S/120 | Cant: 1\nTipo: boleta"
+        // 2. Insertar registros iniciales en la base de datos SQLite
+        val admin = AdminSQLiteOpenHelper(this)
+        val bd = admin.writableDatabase
+        bd.execSQL("DELETE FROM ventas")
+
+        val registrosIniciales = listOf(
+            Venta("xyz001", "laptop gamer hp", 3000.0, 1, "factura", "20/07/2026"),
+            Venta("xyz002", "teclado", 50.0, 1, "boleta", "14/08/2026"),
+            Venta("xyz003", "mouse inalambrico", 35.0, 2, "boleta", "15/08/2026"),
+            Venta("xyz004", "luces led", 150.0, 1, "factura", "18/08/2026"),
+            Venta("xyz005", "audifonos gamer", 120.0, 1, "boleta", "22/08/2026")
         )
 
-        // Lógica de búsqueda
-        etBuscar.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
-                val busqueda = etBuscar.text.toString().trim()
-                val encontrado = listaVentas.find { it.contains(busqueda, ignoreCase = true) }
+        for (v in registrosIniciales) {
+            val reg = ContentValues().apply {
+                put("codigo", v.codigo)
+                put("nombre", v.nombre)
+                put("precio", v.precio)
+                put("cantidad", v.cantidad)
+                put("tipo", v.tipo)
+                put("fecha_venta", v.fechaVenta)
+            }
+            bd.insert("ventas", null, reg)
+        }
 
-                txtFacturaBox.visibility = View.GONE
-                txtBoletaBox.visibility = View.GONE
+        // 3. Consultar la base de datos e imprimir en Logcat
+        val fila = bd.rawQuery("SELECT codigo, nombre, precio, cantidad, tipo, fecha_venta FROM ventas", null)
+        if (fila.moveToFirst()) {
+            do {
+                val v = Venta(
+                    fila.getString(0),
+                    fila.getString(1),
+                    fila.getDouble(2),
+                    fila.getInt(3),
+                    fila.getString(4),
+                    fila.getString(5)
+                )
+                listaVentas.add(v)
+                Log.i("BD_REGISTRO", "Venta: Cod=${v.codigo} | Nom=${v.nombre} | Precio=S/${v.precio} | Cant=${v.cantidad} | Tipo=${v.tipo} | Fecha=${v.fechaVenta}")
+            } while (fila.moveToNext())
+        }
+        fila.close()
+        bd.close()
 
-                if (encontrado != null) {
-                    if (encontrado.contains("factura", ignoreCase = true)) {
-                        txtFacturaBox.text = "📄 FACTURA ENCONTRADA:\n\n$encontrado"
-                        txtFacturaBox.visibility = View.VISIBLE
-                    } else if (encontrado.contains("boleta", ignoreCase = true)) {
-                        txtBoletaBox.text = "🎫 BOLETA ENCONTRADA:\n\n$encontrado"
-                        txtBoletaBox.visibility = View.VISIBLE
-                    }
-                } else {
-                    txtFacturaBox.text = "⚠️ Producto no encontrado"
-                    txtFacturaBox.visibility = View.VISIBLE
-                }
-                true
-            } else {
-                false
+        // 4. Cargar los 5 registros en la lista principal desde el inicio
+        listaFiltrada.addAll(listaVentas)
+
+        // 5. Configurar el adaptador para mostrar las tarjetas directamente
+        val adapter = object : ArrayAdapter<Venta>(this, R.layout.item_venta, listaFiltrada) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = convertView ?: layoutInflater.inflate(R.layout.item_venta, parent, false)
+                val item = getItem(position)!!
+
+                view.findViewById<TextView>(R.id.txtItemCodFecha).text = "${item.codigo} • ${item.fechaVenta}"
+                view.findViewById<TextView>(R.id.txtItemTipo).text = item.tipo.uppercase()
+                view.findViewById<TextView>(R.id.txtItemNombre).text = item.nombre
+                view.findViewById<TextView>(R.id.txtItemCantidad).text = "${item.cantidad} unidad(es)"
+                view.findViewById<TextView>(R.id.txtItemPrecio).text = "S/ ${item.precio}"
+
+                return view
             }
         }
+        lvVentas.adapter = adapter
+
+        // 6. Búsqueda y filtrado dinámico
+        etBuscar.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s.toString().trim().lowercase()
+                listaFiltrada.clear()
+
+                if (query.isNotEmpty()) {
+                    val coincidencias = listaVentas.filter {
+                        it.nombre.lowercase().contains(query) || it.codigo.lowercase().contains(query)
+                    }
+                    listaFiltrada.addAll(coincidencias)
+
+                    val primero = coincidencias.firstOrNull()
+                    if (primero != null) {
+                        val contenido = "Cod: ${primero.codigo}\nProd: ${primero.nombre}\nPrecio: S/${primero.precio} | Cant: ${primero.cantidad}\nTipo: ${primero.tipo}"
+                        if (primero.tipo.lowercase() == "factura") {
+                            txtFacturaBox.text = "📄 FACTURA ENCONTRADA:\n\n$contenido"
+                            txtFacturaBox.visibility = View.VISIBLE
+                            txtBoletaBox.visibility = View.GONE
+                        } else {
+                            txtBoletaBox.text = "💳 BOLETA ENCONTRADA:\n\n$contenido"
+                            txtBoletaBox.visibility = View.VISIBLE
+                            txtFacturaBox.visibility = View.GONE
+                        }
+                    } else {
+                        txtFacturaBox.visibility = View.GONE
+                        txtBoletaBox.visibility = View.GONE
+                    }
+                } else {
+                    listaFiltrada.addAll(listaVentas)
+                    txtFacturaBox.visibility = View.GONE
+                    txtBoletaBox.visibility = View.GONE
+                }
+
+                adapter.notifyDataSetChanged()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
     }
 }
+
+data class Venta(
+    val codigo: String,
+    val nombre: String,
+    val precio: Double,
+    val cantidad: Int,
+    val tipo: String,
+    val fechaVenta: String
+)
