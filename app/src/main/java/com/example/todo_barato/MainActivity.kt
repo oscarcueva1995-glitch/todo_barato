@@ -1,73 +1,70 @@
 package com.example.todo_barato
 
-import android.graphics.drawable.AnimatedImageDrawable
+import android.content.ContentValues
 import android.os.Bundle
-import android.view.inputmethod.EditorInfo
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.TextView
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
-
-    private lateinit var imgGokuIntro: ImageView
-    private lateinit var etBuscar: EditText
-    private lateinit var txtFacturaBox: TextView
-    private lateinit var txtBoletaBox: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        imgGokuIntro = findViewById(R.id.imgGokuIntro)
-        etBuscar = findViewById(R.id.etBuscar)
-        txtFacturaBox = findViewById(R.id.txtFacturaBox)
-        txtBoletaBox = findViewById(R.id.txtBoletaBox)
+        // 1. Conexión a la base de datos SQLite
+        val admin = AdminSQLiteOpenHelper(this)
+        val bd = admin.writableDatabase
 
-        // Cargar y reproducir el GIF de forma permanente arriba como logo
-        imgGokuIntro.setImageResource(R.drawable.goku_ui)
-        val drawable = imgGokuIntro.drawable
-        if (drawable is AnimatedImageDrawable) {
-            drawable.start()
-        }
+        // 2. Limpiar la tabla previa para evitar duplicados de clave primaria al reiniciar
+        bd.execSQL("DELETE FROM ventas")
 
-        // Base de datos local (Lista de ventas)
+        // 3. Lista con los 5 registros requeridos
         val listaVentas = listOf(
-            "Cod: xyz001\nProd: laptop gamer php\nPrecio: S/3000 | Cant: 1\nTipo: factura",
-            "Cod: xyz002\nProd: teclado\nPrecio: S/50 | Cant: 1\nTipo: boleta",
-            "Cod: xyz003\nProd: mouse inalambrico\nPrecio: S/35 | Cant: 2\nTipo: boleta",
-            "Cod: xyz004\nProd: luces led\nPrecio: S/150 | Cant: 1\nTipo: factura",
-            "Cod: xyz005\nProd: audifonos gamer\nPrecio: S/120 | Cant: 1\nTipo: boleta"
+            Venta("xyz001", "laptop gamer hp", 3000.0, 1, "factura", "20/07/2026"),
+            Venta("xyz002", "teclado", 50.0, 1, "boleta", "14/08/2026"),
+            Venta("xyz003", "mouse inalambrico", 35.0, 2, "boleta", "15/08/2026"),
+            Venta("xyz004", "luces led", 150.0, 1, "factura", "18/08/2026"),
+            Venta("xyz005", "audifonos gamer", 120.0, 1, "boleta", "22/08/2026")
         )
 
-        // Lógica de búsqueda al presionar "Enter" o la Lupa en el teclado
-        etBuscar.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
-                val busqueda = etBuscar.text.toString().trim()
-
-                val encontrado = listaVentas.find {
-                    it.contains(busqueda, ignoreCase = true)
-                }
-
-                txtFacturaBox.visibility = TextView.GONE
-                txtBoletaBox.visibility = TextView.GONE
-
-                if (encontrado != null) {
-                    if (encontrado.contains("factura", ignoreCase = true)) {
-                        txtFacturaBox.text = "📄 FACTURA ENCONTRADA:\n\n$encontrado"
-                        txtFacturaBox.visibility = TextView.VISIBLE
-                    } else if (encontrado.contains("boleta", ignoreCase = true)) {
-                        txtBoletaBox.text = "🎫 BOLETA ENCONTRADA:\n\n$encontrado"
-                        txtBoletaBox.visibility = TextView.VISIBLE
-                    }
-                } else {
-                    txtFacturaBox.text = "⚠️ Producto no encontrado"
-                    txtFacturaBox.visibility = TextView.VISIBLE
-                }
-                true
-            } else {
-                false
+        // 4. Inserción de registros en la tabla 'ventas'
+        for (venta in listaVentas) {
+            val registro = ContentValues().apply {
+                put("codigo", venta.codigo)
+                put("nombre", venta.nombre)
+                put("precio", venta.precio)
+                put("cantidad", venta.cantidad)
+                put("tipo", venta.tipo)
+                put("fecha_venta", venta.fechaVenta)
             }
+            bd.insert("ventas", null, registro)
         }
+
+        // 5. Lectura de datos e impresión en Logcat
+        val fila = bd.rawQuery("SELECT codigo, nombre, precio, cantidad, tipo, fecha_venta FROM ventas", null)
+        if (fila.moveToFirst()) {
+            do {
+                val cod = fila.getString(0)
+                val nom = fila.getString(1)
+                val prec = fila.getDouble(2)
+                val cant = fila.getInt(3)
+                val tipo = fila.getString(4)
+                val fecha = fila.getString(5)
+
+                Log.i("BD_REGISTRO", "Venta: Cod=$cod | Nom=$nom | Precio=S/$prec | Cant=$cant | Tipo=$tipo | Fecha=$fecha")
+            } while (fila.moveToNext())
+        }
+        fila.close()
+        bd.close()
     }
 }
+
+// Modelo de datos para gestionar las ventas
+data class Venta(
+    val codigo: String,
+    val nombre: String,
+    val precio: Double,
+    val cantidad: Int,
+    val tipo: String,
+    val fechaVenta: String
+)
