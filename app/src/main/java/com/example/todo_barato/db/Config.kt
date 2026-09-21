@@ -1,10 +1,10 @@
-package com.example.todo_barato
+package com.example.todo_barato.db
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class AdminSQLiteOpenHelper(
+class Config(
     context: Context?,
     name: String = "todo_barato_bd",
     factory: SQLiteDatabase.CursorFactory? = null,

@@ -1,7 +1,6 @@
 package com.example.todo_barato
 
 import android.content.ContentValues
-import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -9,8 +8,6 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.View
-import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -18,6 +15,9 @@ import android.widget.ListView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
+import com.example.todo_barato.iu.adapter.VentaAdapter
+import com.example.todo_barato.db.Config
+import com.example.todo_barato.model.Venta
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,20 +36,20 @@ class MainActivity : AppCompatActivity() {
         val txtBoletaBox = findViewById<TextView>(R.id.txtBoletaBox)
         val lvVentas = findViewById<ListView>(R.id.lvVentas)
 
-        // Cargar y animar el GIF de Goku en la pantalla de carga
+        // Cargar y animar el GIF de Goku
         Glide.with(this)
             .asGif()
             .load(R.drawable.goku_ui)
             .into(imgGokuIntro)
 
-        // 1. Mostrar pantalla de carga (Splash) con animación de Goku
+        // 1. Splash Screen
         Handler(Looper.getMainLooper()).postDelayed({
             layoutIntro.visibility = View.GONE
             layoutContenido.visibility = View.VISIBLE
         }, 6000)
 
-        // 2. Insertar registros iniciales en la base de datos SQLite
-        val admin = AdminSQLiteOpenHelper(this)
+        // 2. Base de Datos
+        val admin = Config(this)
         val bd = admin.writableDatabase
         bd.execSQL("DELETE FROM ventas")
 
@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
             bd.insert("ventas", null, reg)
         }
 
-        // 3. Consultar la base de datos e imprimir en Logcat
+        // 3. Consultar Registros
         val fila = bd.rawQuery("SELECT codigo, nombre, precio, cantidad, tipo, fecha_venta FROM ventas", null)
         if (fila.moveToFirst()) {
             do {
@@ -86,58 +86,18 @@ class MainActivity : AppCompatActivity() {
                     fila.getString(5)
                 )
                 listaVentas.add(v)
-                Log.i("BD_REGISTRO", "Venta: Cod=${v.codigo} | Nom=${v.nombre} | Precio=S/${v.precio} | Cant=${v.cantidad} | Tipo=${v.tipo} | Fecha=${v.fechaVenta}")
             } while (fila.moveToNext())
         }
         fila.close()
         bd.close()
 
-        // 4. Cargar los 5 registros en la lista principal desde el inicio
         listaFiltrada.addAll(listaVentas)
 
-        // 5. Configurar el adaptador con letras más grandes
-        val adapter = object : ArrayAdapter<Venta>(this, R.layout.item_venta, listaFiltrada) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = convertView ?: layoutInflater.inflate(R.layout.item_venta, parent, false)
-                val item = getItem(position)!!
-
-                // Código y fecha (Aumentado a 15sp)
-                val txtCodFecha = view.findViewById<TextView>(R.id.txtItemCodFecha)
-                txtCodFecha.text = "${item.codigo} • ${item.fechaVenta}"
-                txtCodFecha.textSize = 15f
-
-                // Tipo FACTURA / BOLETA (Aumentado a 15sp)
-                val txtTipo = view.findViewById<TextView>(R.id.txtItemTipo)
-                txtTipo.text = item.tipo.uppercase()
-                txtTipo.textSize = 15f
-
-                if (item.tipo.equals("factura", ignoreCase = true)) {
-                    txtTipo.setTextColor(Color.parseColor("#FF5252")) // Rojo
-                } else {
-                    txtTipo.setTextColor(Color.parseColor("#4CAF50")) // Verde
-                }
-
-                // Nombre del producto (Aumentado a 20sp para resaltar)
-                val txtNombre = view.findViewById<TextView>(R.id.txtItemNombre)
-                txtNombre.text = item.nombre
-                txtNombre.textSize = 20f
-
-                // Cantidad (Aumentado a 16sp)
-                val txtCantidad = view.findViewById<TextView>(R.id.txtItemCantidad)
-                txtCantidad.text = "${item.cantidad} unidad(es)"
-                txtCantidad.textSize = 16f
-
-                // Precio (Aumentado a 18sp)
-                val txtPrecio = view.findViewById<TextView>(R.id.txtItemPrecio)
-                txtPrecio.text = "S/ ${item.precio}"
-                txtPrecio.textSize = 18f
-
-                return view
-            }
-        }
+        // 4. Configurar Adaptador (Ahora desde su propia clase)
+        val adapter = VentaAdapter(this, listaFiltrada)
         lvVentas.adapter = adapter
 
-        // 6. Búsqueda y filtrado dinámico
+        // 5. Búsqueda y Filtrado
         etBuscar.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -178,12 +138,3 @@ class MainActivity : AppCompatActivity() {
         })
     }
 }
-
-data class Venta(
-    val codigo: String,
-    val nombre: String,
-    val precio: Double,
-    val cantidad: Int,
-    val tipo: String,
-    val fechaVenta: String
-)
